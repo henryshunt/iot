@@ -41,6 +41,11 @@ namespace Iot.Device.Rtc
         public Ds3231SquareWaveRate SquareWaveRate { get => ReadSquareWaveRate(); set => SetSquareWaveRate(value); }
 
         /// <summary>
+        /// Gets or sets what the INT/SQW pin should output.
+        /// </summary>
+        public Ds3231IntSqwPinMode IntSqwPinMode { get => ReadIntSqwPinMode(); set => SetIntSqwPinMode(value); }
+
+        /// <summary>
         /// Creates a new instance of the DS3231
         /// </summary>
         /// <param name="i2cDevice">The I2C device used for communication.</param>
@@ -385,6 +390,40 @@ namespace Iot.Device.Rtc
             setData[1] &= unchecked((byte)~(1 << 3)); // Clear RS1 bit
             setData[1] &= unchecked((byte)~(1 << 4)); // Clear RS2 bit
             setData[1] |= (byte)(((byte)rate) << 3); // Set RS1 and RS2 bits
+
+            _i2cDevice.Write(setData);
+        }
+
+        /// <summary>
+        /// Reads what the INT/SQW pin should output
+        /// </summary>
+        /// <returns>What the INT/SQW pin should output</returns>
+        protected Ds3231IntSqwPinMode ReadIntSqwPinMode()
+        {
+            Span<byte> getData = stackalloc byte[1];
+            _i2cDevice.WriteByte((byte)Ds3231Register.RTC_CTRL_REG_ADDR);
+            _i2cDevice.Read(getData);
+
+            int intcn = (getData[0] & 0b_0000_0100) >> 2; // Get INTCN bit
+            return (Ds3231IntSqwPinMode)intcn;
+        }
+
+        /// <summary>
+        /// Sets what the INT/SQW pin should output
+        /// </summary>
+        /// <param name="mode">What the INT/SQW pin should output</param>
+        protected void SetIntSqwPinMode(Ds3231IntSqwPinMode mode)
+        {
+            Span<byte> getData = stackalloc byte[1];
+            _i2cDevice.WriteByte((byte)Ds3231Register.RTC_CTRL_REG_ADDR);
+            _i2cDevice.Read(getData);
+
+            Span<byte> setData = stackalloc byte[2];
+            setData[0] = (byte)Ds3231Register.RTC_CTRL_REG_ADDR;
+            setData[1] = getData[0];
+
+            setData[1] &= unchecked((byte)~(1 << 2)); // Clear INTCN bit
+            setData[1] |= (byte)((byte)mode << 2); // Set INTCN bit
 
             _i2cDevice.Write(setData);
         }
