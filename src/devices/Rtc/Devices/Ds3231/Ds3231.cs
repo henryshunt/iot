@@ -21,6 +21,11 @@ namespace Iot.Device.Rtc
         private I2cDevice _i2cDevice;
 
         /// <summary>
+        /// Indicates whether the timekeeping data is valid
+        /// </summary>
+        public bool IsDateTimeValid => ReadDateTimeValid();
+
+        /// <summary>
         /// DS3231 Temperature
         /// </summary>
         public Temperature Temperature => Temperature.FromDegreesCelsius(ReadTemperature());
@@ -85,6 +90,38 @@ namespace Iot.Device.Rtc
                 setData[7] = NumberHelper.Dec2Bcd(time.Year - 1900);
             }
 
+            _i2cDevice.Write(setData);
+
+            SetDateTimeValid();
+        }
+
+        /// <summary>
+        /// Reads whether the timekeeping data is valid
+        /// </summary>
+        /// <returns>Validity of the timekeeping data</returns>
+        protected bool ReadDateTimeValid()
+        {
+            Span<byte> rawData = stackalloc byte[1];
+            _i2cDevice.WriteByte((byte)Ds3231Register.RTC_STAT_REG_ADDR);
+            _i2cDevice.Read(rawData);
+
+            return (rawData[0] >> 7) == 0; // Get OSF bit
+        }
+
+        /// <summary>
+        /// Sets that the timekeeping data is valid
+        /// </summary>
+        protected void SetDateTimeValid()
+        {
+            Span<byte> rawData = stackalloc byte[1];
+            _i2cDevice.WriteByte((byte)Ds3231Register.RTC_STAT_REG_ADDR);
+            _i2cDevice.Read(rawData);
+
+            Span<byte> setData = stackalloc byte[2];
+            setData[0] = (byte)Ds3231Register.RTC_STAT_REG_ADDR;
+            setData[1] = rawData[0];
+
+            setData[1] &= unchecked((byte)~(1 << 7)); // Clear OSF bit
             _i2cDevice.Write(setData);
         }
 
