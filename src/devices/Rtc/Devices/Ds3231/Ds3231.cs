@@ -36,6 +36,11 @@ namespace Iot.Device.Rtc
         public Ds3231Alarm EnabledAlarm { get => ReadEnabledAlarm(); set => SetEnabledAlarm(value); }
 
         /// <summary>
+        /// Gets or sets the frequency of the square wave
+        /// </summary>
+        public Ds3231SquareWaveRate SquareWaveRate { get => ReadSquareWaveRate(); set => SetSquareWaveRate(value); }
+
+        /// <summary>
         /// Creates a new instance of the DS3231
         /// </summary>
         /// <param name="i2cDevice">The I2C device used for communication.</param>
@@ -345,6 +350,41 @@ namespace Iot.Device.Rtc
             setData[1] = getData[0];
             setData[1] &= unchecked((byte)~1); // Clear A1F bit
             setData[1] &= unchecked((byte)~(1 << 1)); // Clear A2F bit
+
+            _i2cDevice.Write(setData);
+        }
+
+        /// <summary>
+        /// Reads the square wave frequency
+        /// </summary>
+        /// <returns>The square wave frequency</returns>
+        protected Ds3231SquareWaveRate ReadSquareWaveRate()
+        {
+            Span<byte> rawData = stackalloc byte[1];
+            _i2cDevice.WriteByte((byte)Ds3231Register.RTC_CTRL_REG_ADDR);
+            _i2cDevice.Read(rawData);
+
+            int rate = (rawData[0] & 0b_0001_1000) >> 3; // Get RS2 and RS1 bits
+            return (Ds3231SquareWaveRate)rate;
+        }
+
+        /// <summary>
+        /// Sets the square wave frequency
+        /// </summary>
+        /// <param name="rate">The square wave frequency</param>
+        protected void SetSquareWaveRate(Ds3231SquareWaveRate rate)
+        {
+            Span<byte> rawData = stackalloc byte[1];
+            _i2cDevice.WriteByte((byte)Ds3231Register.RTC_CTRL_REG_ADDR);
+            _i2cDevice.Read(rawData);
+
+            Span<byte> setData = stackalloc byte[2];
+            setData[0] = (byte)Ds3231Register.RTC_CTRL_REG_ADDR;
+            setData[1] = rawData[0];
+
+            setData[1] &= unchecked((byte)~(1 << 3)); // Clear RS1 bit
+            setData[1] &= unchecked((byte)~(1 << 4)); // Clear RS2 bit
+            setData[1] |= (byte)(((byte)rate) << 3); // Set RS1 and RS2 bits
 
             _i2cDevice.Write(setData);
         }
